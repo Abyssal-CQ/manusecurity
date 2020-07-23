@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>340698967941-ap9d4evr3c6qe47egkk79kkorbvra538.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.340698967941-ap9d4evr3c6qe47egkk79kkorbvra538</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDuppcZIeBdfPSZgW-0TR_Ywxv8DTDLrw4</string>
+	<key>GCM_SENDER_ID</key>
+	<string>340698967941</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.luismancor.expensesApp</string>
+	<key>PROJECT_ID</key>
+	<string>expensesapp-45b96</string>
+	<key>STORAGE_BUCKET</key>
+	<string>expensesapp-45b96.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:340698967941:ios:65b9ee895a912431709eec</string>
+	<key>DATABASE_URL</key>
+	<string>https://expensesapp-45b96.firebaseio.com</string>
+</dict>
+</plist>

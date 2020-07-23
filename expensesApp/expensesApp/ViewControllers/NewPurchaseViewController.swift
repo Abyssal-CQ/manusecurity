@@ -1,0 +1,325 @@
+//
+//  NewPurchaseViewController.swift
+//  expensesApp
+//
+//  Created by Juan Mancilla on 7/16/20.
+//  Copyright © 2020 Juan Mancilla. All rights reserved.
+//
+
+import UIKit
+import Firebase
+import CoreLocation
+import AVFoundation
+
+class NewPurchaseViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource, UITextViewDelegate,UINavigationControllerDelegate, UIImagePickerControllerDelegate, CLLocationManagerDelegate {
+    
+    //Picker elements and Functions -------------------------//
+    @IBOutlet weak var picker: UIPickerView!
+    var pickerData:[String] = [String]()
+    func numberOfComponents(in pickerView: UIPickerView) -> Int {
+        return 1
+    }
+    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+        return pickerData.count
+    }
+    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+        return pickerData[row]
+    }
+    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+        pickerValue = pickerData[row] as String
+    }
+    var pickerValue: String = ""   //FIREBASE PICKER INCIDENT
+    //-------------------- Picker Element --------------------//
+    
+    
+    //Outlet Declarations
+    @IBOutlet weak var txtFieldView: UITextView! //FIREBASE LARGE TEXT
+    @IBOutlet weak var segmentedControl: UISegmentedControl!
+    @IBOutlet weak var descriptionTextField: UITextField!
+    
+    
+    //TESTING BUTTON
+    @IBAction func obtain(_ sender: Any) {
+        print("\(pickerValue)")
+        print(txtFieldView.text!)
+        print(segmentedControlValue)
+        print(descriptionTextField.text!)
+    }
+    
+    //Used to show navigation bar
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        self.navigationController?.setNavigationBarHidden(false, animated: animated)
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        enviarButton.isEnabled = false
+        //Ask for permissions to use GPD device Location
+        self.locationManager.requestAlwaysAuthorization()
+        self.locationManager.requestWhenInUseAuthorization()
+        if CLLocationManager.locationServicesEnabled(){
+            locationManager.delegate = self
+            locationManager.desiredAccuracy = kCLLocationAccuracyBest
+            locationManager.startUpdatingLocation()
+        }
+        
+        //Audio configurations
+        configurarGrabacion()
+        
+        //Image Picker delegate
+        imagePicker.delegate = self  //Delegate que aplica al imagePicker
+        //TextField LARGE delegate and colors
+        txtFieldView.delegate = self
+        txtFieldView.textColor = .lightGray
+        txtFieldView.text = "Ingrese algunos detalles..."
+        //Picker Delegate and Initial Data
+        self.picker.delegate = self
+        self.picker.dataSource = self
+        pickerData = ["Robo","Actos Vandalicos", "Abuso familiar","Acoso","Otro"]
+    }
+    
+    
+    //Helper functions for Large TextField -----------------------------//
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        if txtFieldView.textColor == UIColor.lightGray{
+             txtFieldView.text = ""
+             txtFieldView.textColor = UIColor.black
+         }
+    }
+    func textViewDidEndEditing(_ textView: UITextView) {
+        if txtFieldView.text!.isEmpty{
+              txtFieldView.text = "Ingrese algunos detalles..."
+              txtFieldView.textColor = UIColor.lightGray
+          }
+    }
+    //--------------------- END Custom Large Text Field ---------------//
+
+    
+    
+    
+    //Segmented control action button ---------------------------------//
+    var segmentedControlValue:String = ""   // FIREBASE SEGMENTED CONTROL VALUE
+    @IBAction func segmentedControlAction(_ sender: Any) {
+        if segmentedControl.selectedSegmentIndex == 0{
+            self.segmentedControlValue = "Primera persona"
+        }else if segmentedControl.selectedSegmentIndex == 1{
+            self.segmentedControlValue = "Cerca"
+        }else{
+            self.segmentedControlValue = "Lejos"
+        }
+    }
+    //------------- END segmented control values -----------------------//
+    
+    
+    
+    
+    
+    //Adding photo value button [IMAGE SECTION] -----------------------------//
+    var imagePicker = UIImagePickerController() //Creacion de controlador para imagenes
+    var imagenID = NSUUID().uuidString
+    var imageData = UIImage()
+    @IBAction func addPhotoActionButton(_ sender: Any) {
+        imagePicker.sourceType = .savedPhotosAlbum
+        imagePicker.allowsEditing = false
+        present(imagePicker, animated: true, completion: nil)
+    }
+    
+    //functions for imagepicker controller -- USED TO ASIGN IMAGE TO UIIMAGE
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        //Autogenerated
+        let image = info[UIImagePickerController.InfoKey.originalImage] as? UIImage
+        self.imageData = image!
+        //elegirContactoBoton.isEnabled = true
+        imagePicker.dismiss(animated: true, completion: nil)
+        enviarButton.isEnabled = true
+    }
+    //------------------ END Section for UIImage controller -------------------//
+    
+    
+    
+    
+    //Sending data to Firebase
+    var reportID = NSUUID().uuidString
+    
+    @IBOutlet weak var enviarButton: UIButton!
+    @IBAction func sendToFirebaseActionButton(_ sender: Any) {
+        
+  
+        //File Upload to Firebase Storage
+        let FolderImage = Storage.storage().reference().child("imagenes")
+        let ImageData = imageData.jpegData(compressionQuality: 0.50)
+        let uploadedImageName = FolderImage.child("\(imagenID).jpg")
+            uploadedImageName.putData(ImageData!, metadata: nil){(metadata, error) in
+                if error != nil {
+                    self.mostrarAlerta(titulo: "Error", mensaje: "Se produjo un error al subir la imagen", accion: "Aceptar")
+                }else{
+                    uploadedImageName.downloadURL(completion: {(urlImage, error) in
+                        guard urlImage != nil else {
+                        self.mostrarAlerta(titulo: "Error", mensaje: "Se produjo un error al obtener informacion de imagen.", accion: "Cancelar")
+                            print("Ocurrio un error al obtener informacion de imagen")
+                        return
+                        }
+                        
+                        
+                        //Audio Upload to Firebase Storage
+                        let audioFolder = Storage.storage().reference().child("audios")
+                        let audioData = self.audioURL!
+                        let FirebaseUploadPath = audioFolder.child("\(self.audioID).m4a")
+                          FirebaseUploadPath.putFile(from: audioData, metadata: nil){(metadata, error) in
+                              if error != nil{
+                                  print("Ocurrio un error al subir el archivo m4a")
+                              }else{
+                                  FirebaseUploadPath.downloadURL(completion: {(url, error) in
+                                      self.audioDownLoadURL = url!.absoluteString
+                                      print("Audio sucessfully uploaded")
+                                    
+                                    //------
+                                    
+                                    let generatedReport = ["generatedBy":Auth.auth().currentUser?.uid, "type":self.pickerValue, "description":self.descriptionTextField.text!, "distanceFromEvent":self.segmentedControlValue, "largeDescription": self.txtFieldView.text!, "imageURL":urlImage?.absoluteString, "lattitude":self.lattitude, "longitude":self.longitude,"audioID":self.audioID, "audioURL":url?.absoluteString]
+                                    
+                                    //Structure for coordinates collection
+                                    let generatedCoordinates = ["title":self.descriptionTextField.text!, "lattitude":self.lattitude, "longitude":self.longitude]
+                                    
+                                    //Auto CHILD BY AUTO ID for reports
+                                    var ref: DatabaseReference!
+                                    ref = Database.database().reference()
+                                    guard let key = ref.child("usuarios").child(Auth.auth().currentUser!.uid).childByAutoId().key else {return}
+                                    let userID = Auth.auth().currentUser!.uid
+                                    
+                                    //User append information on route generated by ChildByAutoID
+                                    let childUpdates = ["/usuarios/\(userID)/reportes/\(key)/": generatedReport]
+                                    Database.database().reference().updateChildValues(childUpdates)
+                                    
+                                    //Generate reportes collection with data
+                                    Database.database().reference().child("reportes").child(key).setValue(generatedReport){(
+                                        error: Error?, ref:DatabaseReference)in
+                                        if error != nil{
+                                            print("Data not saved")
+                                        }else{ print("Data saved Sucessfully") }
+                                        }
+                                    
+                                    //Generate Coordenates Collection
+                                    Database.database().reference().child("coordinates").child(key).setValue(generatedCoordinates)
+                                    
+                                    self.navigationController?.popViewController(animated: true)
+                                    //--
+                                  })
+                              }
+                          }
+                    
+                        /*
+                        //Structure of report to be pushed into Firebase
+                        let generatedReport = ["generatedBy":Auth.auth().currentUser?.uid, "type":self.pickerValue, "description":self.descriptionTextField.text!, "distanceFromEvent":self.segmentedControlValue, "largeDescription": self.txtFieldView.text!, "imageURL":url?.absoluteString, "lattitude":self.lattitude, "longitude":self.longitude,"audioID":self.audioID, "audioURL":self.audioDownLoadURL]
+                        //Structure for coordinates collection
+                        let generatedCoordinates = ["title":self.descriptionTextField.text!, "lattitude":self.lattitude, "longitude":self.longitude]
+                        
+                        //Auto CHILD BY AUTO ID for reports
+                        var ref: DatabaseReference!
+                        ref = Database.database().reference()
+                        guard let key = ref.child("usuarios").child(Auth.auth().currentUser!.uid).childByAutoId().key else {return}
+                        let userID = Auth.auth().currentUser!.uid
+                        
+                        //User append information on route generated by ChildByAutoID
+                        let childUpdates = ["/usuarios/\(userID)/reportes/\(key)/": generatedReport]
+                        Database.database().reference().updateChildValues(childUpdates)
+                        
+                        //Generate reportes collection with data
+                        Database.database().reference().child("reportes").child(key).setValue(generatedReport){(
+                            error: Error?, ref:DatabaseReference)in
+                            if error != nil{
+                                print("Data not saved")
+                            }else{ print("Data saved Sucessfully") }
+                            }
+                        
+                        //Generate Coordenates Collection
+                        Database.database().reference().child("coordinates").child(key).setValue(generatedCoordinates)
+                        
+                        self.navigationController?.popViewController(animated: true)
+                        */
+                    })//End downloardURL
+                }//End Else
+        }//End put Data
+        
+    }//End Send to Firebase Action button
+    
+    
+    //------------ Audio Section Handler -----------------------------------
+    var grabarAudio:AVAudioRecorder?
+    var audioURL:URL?
+    var audioID = NSUUID().uuidString
+    var audioDownLoadURL = ""
+    
+    @IBOutlet weak var audioButtonTextLabel: UIButton!
+    @IBAction func grabarAudioActionButton(_ sender: Any) {
+        if grabarAudio!.isRecording{
+            //stop recording
+            grabarAudio?.stop()
+            audioButtonTextLabel.setTitle("Agregar audio", for: .normal)
+        }else{
+            //start to record
+            grabarAudio?.record()
+            audioButtonTextLabel.setTitle("Detener", for: .normal)
+        }
+    }
+    
+    func configurarGrabacion(){
+         do{
+             //creating audio session
+             let session = AVAudioSession.sharedInstance()
+             try session.setCategory(AVAudioSession.Category.playAndRecord, mode: AVAudioSession.Mode.default, options: [])
+             try session.overrideOutputAudioPort(.speaker)
+             try session.setActive(true)
+             
+             //local path definition for audio upload
+             let basePath:String = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
+             let pathComponents = [basePath, "\(audioID).m4a"]
+             audioURL = NSURL.fileURL(withPathComponents: pathComponents)!
+
+             //create options for audio recording
+             var settings:[String:AnyObject] = [:]
+             settings[AVFormatIDKey] = Int(kAudioFormatMPEG4AAC) as AnyObject?
+             settings[AVSampleRateKey] = 44100.0 as AnyObject?
+             settings[AVNumberOfChannelsKey] = 2 as AnyObject?
+             settings[AVEncoderAudioQualityKey]=AVAudioQuality.max.rawValue as AnyObject? //Quality F
+             
+             //create object for audio recording
+             grabarAudio = try AVAudioRecorder(url: audioURL!, settings: settings)
+             //grabarAudio = try AVAudioRecorder(url: audioURL, settings: settings)
+             grabarAudio?.prepareToRecord()
+         }catch let error as NSError {}
+     }
+    //-----------------END AUDIO SECTION AND CONFIGURATIONS ---------------
+    
+    
+    
+    // GPS coordingates for updating firebaseDATA
+    var lattitude = ""
+    var longitude = ""
+    let locationManager = CLLocationManager()
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let locationValue : CLLocationCoordinate2D = manager.location?.coordinate else{
+            return
+        }
+        print("My ubicacion \(locationValue.latitude)-- \(locationValue.longitude)")
+        lattitude = String(locationValue.latitude)
+        longitude = String(locationValue.longitude)
+    }
+    
+    
+
+    
+    //Helper function to generate UIAlerts
+    func mostrarAlerta(titulo: String, mensaje:String, accion:String) {
+        let alerta = UIAlertController(title: titulo, message: mensaje, preferredStyle: .alert)
+        let btnCANCELOK = UIAlertAction(title: accion, style: .default, handler: nil)
+        alerta.addAction(btnCANCELOK)
+        present(alerta, animated: true, completion: nil)
+    }
+    
+    
+}
+
+
+
